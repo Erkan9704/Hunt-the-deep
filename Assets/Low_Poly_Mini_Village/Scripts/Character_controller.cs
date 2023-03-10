@@ -15,6 +15,7 @@ public class Character_controller : MonoBehaviour
 
     [Header("References")]
     public Transform CameraHolder;
+    public Transform Camera;
     public Transform feetTransform;
 
     [Header("Settings")]
@@ -66,6 +67,20 @@ public class Character_controller : MonoBehaviour
     [HideInInspector]
     public bool isFalling;
 
+    [Header("Leaning")]
+    public Transform LeanPivot;
+    public float currentLean;
+    public float targetLean;
+    public float leanAngle;
+    public float leanSmoothing;
+    public float leanVelocity;
+
+    private bool isLeaningLeft;
+    private bool isLeaningRight;
+
+    [Header("Aiming In")]
+    public bool isAimingIn;
+
     private void Awake()
     {
         defaultinput = new Defaultinput();
@@ -79,6 +94,18 @@ public class Character_controller : MonoBehaviour
 
         defaultinput.Character.Sprint.performed += e => ToggleSprint();
         defaultinput.Character.SprintReleased.performed += e => StopSprint();
+
+        defaultinput.Weapon.Fire2Pressed.performed += e => AimingInPressed();
+        defaultinput.Weapon.Fire2Released.performed += e => AimingInReleased();
+
+        defaultinput.Character.LeanLeftPressed.performed += e => isLeaningLeft = true;
+        defaultinput.Character.LeanLeftReleased.performed += e => isLeaningLeft = false;
+
+        defaultinput.Character.LeanRightPressed.performed += e => isLeaningRight = true;
+        defaultinput.Character.LeanRightReleased.performed += e => isLeaningRight = false;
+
+        defaultinput.Weapon.Fire1Pressed.performed += e => ShootingPressed();
+        defaultinput.Weapon.Fire1Released.performed += e => ShootingReleased();
 
         defaultinput.Enable();
 
@@ -95,6 +122,13 @@ public class Character_controller : MonoBehaviour
         }
 
     }
+
+    private void Start()
+    {
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+    }
+
     private void Update()
     {
         SetIsGrounded();
@@ -103,8 +137,45 @@ public class Character_controller : MonoBehaviour
         CalculateMovement();
         CalculateJump();
         CalculateStance();
+        CalculateLeaning();
+        CalculateAimingIn();
 
-        
+
+
+    }
+
+    private void ShootingPressed()
+    {
+        if (currentWeapon)
+        {
+            currentWeapon.isShooting = true;
+        }
+    }
+    private void ShootingReleased()
+    {
+        if (currentWeapon)
+        {
+            currentWeapon.isShooting = false;
+        }
+    }
+
+    private void AimingInPressed()
+    {
+        isAimingIn = true;
+    }
+    private void AimingInReleased()
+    {
+        isAimingIn = false;
+    }
+
+    private void CalculateAimingIn()
+    {
+        if (!currentWeapon)
+        {
+            return;
+        }
+
+        currentWeapon.isAimingIn = isAimingIn;
     }
 
     private void SetIsGrounded()
@@ -121,12 +192,12 @@ public class Character_controller : MonoBehaviour
     private void CalculateView()
     {
 
-        newCharacterRotation.y += playerSettings.ViewXSensitivity * ((playerSettings.ViewXInverted ? -input_View.x : input_View.x)) * Time.deltaTime;
+        newCharacterRotation.y += (isAimingIn ? playerSettings.ViewXSensitivity * playerSettings.AimingSensitivityEffector : playerSettings.ViewXSensitivity) * ((playerSettings.ViewXInverted ? -input_View.x : input_View.x)) * Time.deltaTime;
         transform.localRotation = Quaternion. Euler(newCharacterRotation);
 
 
 
-        newCameraRotation.x += playerSettings.ViewYSensitivity * (playerSettings.ViewYInverted ? input_View.y : -input_View.y) * Time.deltaTime;
+        newCameraRotation.x += (isAimingIn ? playerSettings.ViewYSensitivity *playerSettings.AimingSensitivityEffector : playerSettings.ViewYSensitivity) * (playerSettings.ViewYInverted ? input_View.y : -input_View.y) * Time.deltaTime;
         CameraHolder.localRotation = Quaternion.Euler(newCameraRotation);
 
         newCameraRotation.x = Mathf.Clamp(newCameraRotation.x, viewClampYMin, viewClampYMax);
@@ -135,11 +206,11 @@ public class Character_controller : MonoBehaviour
     private void CalculateMovement()
     {
 
-        if (input_Movement.y <= 0.2f)
+        if (input_Movement.y <= 0.2f || isAimingIn == true || currentWeapon.isShooting == true)
         {
             isSprinting = false;
         }
-
+        
 
 
         var verticalSpeed = playerSettings.WalkingForwardSpeed;
@@ -164,6 +235,11 @@ public class Character_controller : MonoBehaviour
         else if (playerStance == PlayerStance.Prone)
         {
             playerSettings.SpeedEffector = playerSettings.ProneSpeedEffector;
+
+        }
+        else if (isAimingIn)
+        {
+            playerSettings.SpeedEffector = playerSettings.AimingSpeedEffector;
 
         }
 
@@ -209,6 +285,30 @@ public class Character_controller : MonoBehaviour
         characterController.Move(movementSpeed);
 
 
+    }
+    
+
+
+    private void CalculateLeaning()
+    {
+        if (isLeaningLeft)
+        {
+            targetLean = leanAngle;
+        }
+        else if (isLeaningRight)
+        {
+            targetLean = -leanAngle;
+        }
+        else
+        {
+            targetLean = 0;
+        }
+
+
+
+        currentLean = Mathf.SmoothDamp(currentLean, targetLean, ref leanVelocity, leanSmoothing);
+
+        LeanPivot.localRotation = Quaternion.Euler(new Vector3(0,0,currentLean));
     }
 
     

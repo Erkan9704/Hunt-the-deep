@@ -20,6 +20,7 @@ public static class Models
         [Header("View Settings")]
         public float ViewXSensitivity;
         public float ViewYSensitivity;
+        public float AimingSensitivityEffector;
         
         
         public bool ViewXInverted;
@@ -51,6 +52,7 @@ public static class Models
         public float CrouchSpeedEffector;
         public float ProneSpeedEffector;
         public float FallingSpeedEffector;
+        public float AimingSpeedEffector;
 
         [Header("Is Grounded & Falling")]
         public float isGroundedRadius;
@@ -67,6 +69,12 @@ public static class Models
     #endregion
 
     #region - Weapons -
+
+    public enum WeaponFireType
+    {
+        SemiAuto,
+        FullyAuto
+    }
 
 
     [Serializable]
